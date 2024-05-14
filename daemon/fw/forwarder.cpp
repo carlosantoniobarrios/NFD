@@ -23,6 +23,8 @@
  * NFD, e.g., in COPYING.md file.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+// modified by cabeee on 5/2/2024
+
 #include "forwarder.hpp"
 
 #include "algorithm.hpp"
@@ -96,6 +98,12 @@ Forwarder::onIncomingInterest(const Interest& interest, const FaceEndpoint& ingr
   auto nonce = interest.getNonce();
   auto hopLimit = interest.getHopLimit();
 
+  printf("\n\n\n      CABEEE - Incoming Interest\n\n\n");
+  NFD_LOG_INFO("     CABEEE: onIncomingInterest in=" << ingress << " interest=" << interest.getName()
+                  << " nonce=" << nonce);
+  NFD_LOG_DEBUG("     CABEEE: onIncomingInterest in=" << ingress << " interest=" << interest.getName()
+                  << " nonce=" << nonce);
+
   // drop if HopLimit zero, decrement otherwise (if present)
   if (hopLimit) {
     NFD_LOG_DEBUG("onIncomingInterest in=" << ingress << " interest=" << interest.getName()
@@ -168,6 +176,7 @@ Forwarder::onIncomingInterest(const Interest& interest, const FaceEndpoint& ingr
 void
 Forwarder::onInterestLoop(const Interest& interest, const FaceEndpoint& ingress)
 {
+  printf("\n\n\n      CABEEE - Interest Loop\n\n\n");
   // if multi-access or ad hoc face, drop
   if (ingress.face.getLinkType() != ndn::nfd::LINK_TYPE_POINT_TO_POINT) {
     NFD_LOG_DEBUG("onInterestLoop in=" << ingress << " interest=" << interest.getName()
@@ -186,6 +195,7 @@ void
 Forwarder::onContentStoreMiss(const Interest& interest, const FaceEndpoint& ingress,
                               const shared_ptr<pit::Entry>& pitEntry)
 {
+  printf("\n\n\n      CABEEE - content store miss\n\n\n");
   NFD_LOG_DEBUG("onContentStoreMiss interest=" << interest.getName() << " nonce=" << interest.getNonce());
   ++m_counters.nCsMisses;
 
@@ -229,6 +239,7 @@ void
 Forwarder::onContentStoreHit(const Interest& interest, const FaceEndpoint& ingress,
                              const shared_ptr<pit::Entry>& pitEntry, const Data& data)
 {
+  printf("\n\n\n      CABEEE - content store hit\n\n\n");
   NFD_LOG_DEBUG("onContentStoreHit interest=" << interest.getName() << " nonce=" << interest.getNonce());
   ++m_counters.nCsHits;
 
@@ -250,6 +261,7 @@ pit::OutRecord*
 Forwarder::onOutgoingInterest(const Interest& interest, Face& egress,
                               const shared_ptr<pit::Entry>& pitEntry)
 {
+  printf("\n\n\n      CABEEE - outgoing interest\n\n\n");
   // drop if HopLimit == 0 but sending on non-local face
   if (interest.getHopLimit() == 0 && egress.getScope() == ndn::nfd::FACE_SCOPE_NON_LOCAL) {
     NFD_LOG_DEBUG("onOutgoingInterest out=" << egress.getId() << " interest=" << interest.getName()
@@ -275,6 +287,7 @@ Forwarder::onOutgoingInterest(const Interest& interest, Face& egress,
 void
 Forwarder::onInterestFinalize(const shared_ptr<pit::Entry>& pitEntry)
 {
+  printf("\n\n\n      CABEEE - interest finalize\n\n\n");
   NFD_LOG_DEBUG("onInterestFinalize interest=" << pitEntry->getName()
                 << (pitEntry->isSatisfied ? " satisfied" : " unsatisfied"));
 
@@ -297,6 +310,7 @@ Forwarder::onInterestFinalize(const shared_ptr<pit::Entry>& pitEntry)
 void
 Forwarder::onIncomingData(const Data& data, const FaceEndpoint& ingress)
 {
+  printf("\n\n\n      CABEEE - incomming data\n\n\n");
   data.setTag(make_shared<lp::IncomingFaceIdTag>(ingress.face.getId()));
   ++m_counters.nInData;
   NFD_LOG_DEBUG("onIncomingData in=" << ingress << " data=" << data.getName());
@@ -391,6 +405,7 @@ Forwarder::onIncomingData(const Data& data, const FaceEndpoint& ingress)
 void
 Forwarder::onDataUnsolicited(const Data& data, const FaceEndpoint& ingress)
 {
+  printf("\n\n\n      CABEEE - data unsolicited\n\n\n");
   ++m_counters.nUnsolicitedData;
 
   // accept to cache?
@@ -406,6 +421,7 @@ Forwarder::onDataUnsolicited(const Data& data, const FaceEndpoint& ingress)
 bool
 Forwarder::onOutgoingData(const Data& data, Face& egress)
 {
+  printf("\n\n\n      CABEEE - outgoing data\n\n\n");
   if (egress.getId() == face::INVALID_FACEID) {
     NFD_LOG_WARN("onOutgoingData out=(invalid) data=" << data.getName());
     return false;
@@ -433,6 +449,7 @@ Forwarder::onOutgoingData(const Data& data, Face& egress)
 void
 Forwarder::onIncomingNack(const lp::Nack& nack, const FaceEndpoint& ingress)
 {
+  printf("\n\n\n      CABEEE - incoming nack\n\n\n");
   nack.setTag(make_shared<lp::IncomingFaceIdTag>(ingress.face.getId()));
   ++m_counters.nInNacks;
 
@@ -488,6 +505,7 @@ bool
 Forwarder::onOutgoingNack(const lp::NackHeader& nack, Face& egress,
                           const shared_ptr<pit::Entry>& pitEntry)
 {
+  printf("\n\n\n      CABEEE - outgoing nack\n\n\n");
   if (egress.getId() == face::INVALID_FACEID) {
     NFD_LOG_WARN("onOutgoingNack out=(invalid)" << " nack=" << pitEntry->getName()
                  << "~" << nack.getReason());
@@ -531,12 +549,14 @@ Forwarder::onOutgoingNack(const lp::NackHeader& nack, Face& egress,
 void
 Forwarder::onDroppedInterest(const Interest& interest, Face& egress)
 {
+  printf("\n\n\n      CABEEE - dropped interest\n\n\n");
   m_strategyChoice.findEffectiveStrategy(interest.getName()).onDroppedInterest(interest, egress);
 }
 
 void
 Forwarder::onNewNextHop(const Name& prefix, const fib::NextHop& nextHop)
 {
+  printf("\n\n\n      CABEEE - new next hop\n\n\n");
   const auto affectedEntries = this->getNameTree().partialEnumerate(prefix,
     [&] (const name_tree::Entry& nte) -> std::pair<bool, bool> {
       // we ignore an NTE and skip visiting its descendants if that NTE has an
