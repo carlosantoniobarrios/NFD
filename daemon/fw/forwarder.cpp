@@ -23,7 +23,7 @@
  * NFD, e.g., in COPYING.md file.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-// modified by cabeee on 5/2/2024
+// modified by cabeee on 5/2/2024 to count application interest and data packets
 
 #include "forwarder.hpp"
 
@@ -91,17 +91,22 @@ Forwarder::Forwarder(FaceTable& faceTable)
 void
 Forwarder::onIncomingInterest(const Interest& interest, const FaceEndpoint& ingress)
 {
+  // get first part of the name, if it equals /interCACHE and it's coming from a local face (our application), then print INFO message
+  // this effectively counts the number of interest packets that are generated at the consumer (including the custom forwarders)
+  ndn::Name simpleName;
+  simpleName = (interest.getName()).getPrefix(1); // get just the first component of the name, and convert to Uri string
+  std::string simpleStringName = simpleName.toUri();
+  if (simpleStringName == "/interCACHE" && ingress.face.getScope() == ndn::nfd::FACE_SCOPE_LOCAL)
+  {
+    NFD_LOG_INFO("     CABEEE: onIncomingInterest from consumer application =" << " name=" << interest.getName());
+  }
+
   interest.setTag(make_shared<lp::IncomingFaceIdTag>(ingress.face.getId()));
   ++m_counters.nInInterests;
 
   // ensure the received Interest has a Nonce
   auto nonce = interest.getNonce();
   auto hopLimit = interest.getHopLimit();
-
-  NFD_LOG_INFO("     CABEEE info message: onIncomingInterest in=" << ingress << " interest=" << interest.getName()
-                  << " nonce=" << nonce);
-  NFD_LOG_DEBUG("     CABEEE debug message: onIncomingInterest in=" << ingress << " interest=" << interest.getName()
-                  << " nonce=" << nonce);
 
   // drop if HopLimit zero, decrement otherwise (if present)
   if (hopLimit) {
@@ -413,6 +418,16 @@ Forwarder::onDataUnsolicited(const Data& data, const FaceEndpoint& ingress)
 bool
 Forwarder::onOutgoingData(const Data& data, Face& egress)
 {
+  // get first part of the name, if it equals /interCACHE and it's going to a local face (our application), then print INFO message
+  // this effectively counts the number of data packets that are arriving at their consumer
+  ndn::Name simpleName;
+  simpleName = (data.getName()).getPrefix(1); // get just the first component of the name, and convert to Uri string
+  std::string simpleStringName = simpleName.toUri();
+  if (simpleStringName == "/interCACHE" && egress.getScope() == ndn::nfd::FACE_SCOPE_LOCAL)
+  {
+    NFD_LOG_INFO("     CABEEE: onOutgoingData to the consumer application =" << " name=" << data.getName());
+  }
+
   if (egress.getId() == face::INVALID_FACEID) {
     NFD_LOG_WARN("onOutgoingData out=(invalid) data=" << data.getName());
     return false;
@@ -429,6 +444,7 @@ Forwarder::onOutgoingData(const Data& data, Face& egress)
   }
 
   NFD_LOG_DEBUG("onOutgoingData out=" << egress.getId() << " data=" << data.getName());
+
 
   // send Data
   egress.sendData(data);
