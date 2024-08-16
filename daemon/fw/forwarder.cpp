@@ -201,6 +201,13 @@ Forwarder::onContentStoreMiss(const Interest& interest, const FaceEndpoint& ingr
   NFD_LOG_DEBUG("onContentStoreMiss interest=" << interest.getName() << " nonce=" << interest.getNonce());
   ++m_counters.nCsMisses;
 
+  NFD_LOG_DEBUG("     cabeee onContentStoreMiss, must now look at interest, decode/prune DAG, and generate new interests if possible");
+
+  //TODO: look at faces and FIB, and determine if we are hosting an interCACHE service (application). If we are, then 
+      //TODO: take a look at the interest application parameters (DAG). Prune the DAG below the hosted service (could be hosting more than one service!)
+      //TODO: generate interests for upstream services accordingly.
+      //TODO: keep track of generated interests (or just let the duplicate interest be dropped by vanilla NDN) and keep track of received inputs via dagServTracker data structure (like in our forwarder)
+
   // attach HopLimit if configured and not present in Interest
   if (m_config.defaultHopLimit > 0 && !interest.getHopLimit()) {
     const_cast<Interest&>(interest).setHopLimit(m_config.defaultHopLimit);
