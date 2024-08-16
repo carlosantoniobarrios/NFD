@@ -96,9 +96,16 @@ Forwarder::onIncomingInterest(const Interest& interest, const FaceEndpoint& ingr
   ndn::Name simpleName;
   simpleName = (interest.getName()).getPrefix(1); // get just the first component of the name, and convert to Uri string
   std::string simpleStringName = simpleName.toUri();
-  if (simpleStringName == "/interCACHE" && ingress.face.getScope() == ndn::nfd::FACE_SCOPE_LOCAL)
+  if (simpleStringName == "/interCACHE")
   {
-    NFD_LOG_INFO("     CABEEE: onIncomingInterest from consumer application =" << " name=" << interest.getName());
+    if (ingress.face.getScope() == ndn::nfd::FACE_SCOPE_LOCAL)
+    {
+      NFD_LOG_INFO("     CABEEE: onIncomingInterestFromApp (from consuming application only) =" << " name=" << interest.getName());
+    }
+    else
+    {
+      NFD_LOG_INFO("     CABEEE: onIncomingInterestFromFace (from another NFD node on a physical face) =" << " name=" << interest.getName());
+    }
   }
 
   interest.setTag(make_shared<lp::IncomingFaceIdTag>(ingress.face.getId()));
@@ -430,9 +437,16 @@ Forwarder::onOutgoingData(const Data& data, Face& egress)
   ndn::Name simpleName;
   simpleName = (data.getName()).getPrefix(1); // get just the first component of the name, and convert to Uri string
   std::string simpleStringName = simpleName.toUri();
-  if (simpleStringName == "/interCACHE" && egress.getScope() == ndn::nfd::FACE_SCOPE_LOCAL)
+  if (simpleStringName == "/interCACHE")
   {
-    NFD_LOG_INFO("     CABEEE: onOutgoingData to the consumer application =" << " name=" << data.getName());
+    if (egress.getScope() == ndn::nfd::FACE_SCOPE_LOCAL)
+    {
+      NFD_LOG_INFO("     CABEEE: onOutgoingDataToApp (to the consuming application only) =" << " name=" << data.getName());
+    }
+    else
+    {
+      NFD_LOG_INFO("     CABEEE: onOutgoingDataToFace (to another NFD node on a physical face) =" << " name=" << data.getName());
+    }
   }
 
   if (egress.getId() == face::INVALID_FACEID) {
