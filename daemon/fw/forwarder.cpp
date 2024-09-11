@@ -38,6 +38,8 @@
 #include <ndn-cxx/lp/pit-token.hpp>
 #include <ndn-cxx/lp/tags.hpp>
 
+#include <iostream>
+
 namespace nfd {
 
 NFD_LOG_INIT(Forwarder);
@@ -214,6 +216,29 @@ Forwarder::onContentStoreMiss(const Interest& interest, const FaceEndpoint& ingr
       //TODO: take a look at the interest application parameters (DAG). Prune the DAG below the hosted service (could be hosting more than one service!)
       //TODO: generate interests for upstream services accordingly.
       //TODO: keep track of generated interests (or just let the duplicate interest be dropped by vanilla NDN) and keep track of received inputs via dagServTracker data structure (like in our forwarder)
+
+  // TODO: generate interest (/interCACHE/shortcutOPT) to all local application faces, containing DAG (application parameters).
+    // OR I can look at the existing FIB and the DAG to see if we are hosting upstream services, and only send to local applications if we are.
+  // TODO: Forwarder applications will look for this name, and generate interests early if they are hosting any upstream services from the one in this interest
+  Interest interestOPT("/interCACHE/shortcutOPT");
+  if (interest.hasApplicationParameters())
+  {
+    interestOPT.setApplicationParameters(interest.getApplicationParameters());
+  }
+  ndn::Name simpleName;
+  simpleName = (interest.getName()).getPrefix(1); // get just the first component of the name, and convert to Uri string
+  std::string simpleStringName = simpleName.toUri();
+  if (simpleStringName == "/interCACHE")
+  {
+    for (FaceTable::const_iterator it = m_faceTable.begin(); it != m_faceTable.end(); ++it) {
+      Face* localFace = &*it;
+      if (localFace->getScope() != ndn::nfd::FACE_SCOPE_NON_LOCAL) {
+        NFD_LOG_DEBUG("  cabeee CABEEEshortcutOPT, generating interest " << interestOPT << ", for local face " << localFace);
+        //std::cout << "  cabeee CABEEEshortcutOPT, generating interest " << interestOPT << ", for local face " << localFace << std::endl;
+        localFace->sendInterest(interestOPT);
+      }
+    }
+  }
 
   // attach HopLimit if configured and not present in Interest
   if (m_config.defaultHopLimit > 0 && !interest.getHopLimit()) {
