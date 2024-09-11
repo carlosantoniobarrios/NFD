@@ -211,7 +211,6 @@ Forwarder::onContentStoreMiss(const Interest& interest, const FaceEndpoint& ingr
   ++m_counters.nCsMisses;
 
   NFD_LOG_DEBUG("cabeee onContentStoreMiss, sending /shortcutOPT interest to apps on local faces to generate new interests for inputs into locally hosted services.");
-
   // generate interest (/interCACHE/shortcutOPT) to all local application faces, containing DAG (application parameters).
   // forwarder applications will look for this name, and generate interests early if they are hosting any upstream services from the one in this interest
   Interest interestOPT("/interCACHE/shortcutOPT");
