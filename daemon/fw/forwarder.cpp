@@ -93,12 +93,12 @@ Forwarder::Forwarder(FaceTable& faceTable)
 void
 Forwarder::onIncomingInterest(const Interest& interest, const FaceEndpoint& ingress)
 {
-  // get first part of the name, if it equals /interCACHE and it's coming from a local face (our application), then print INFO message
+  // get first part of the name, if it equals /interCACHE or /orchA, or /orchB and it's coming from a local face (our application), then print INFO message
   // this effectively counts the number of interest packets that are generated at the consumer (including the custom forwarders)
   ndn::Name simpleName;
   simpleName = (interest.getName()).getPrefix(1); // get just the first component of the name, and convert to Uri string
   std::string simpleStringName = simpleName.toUri();
-  if (simpleStringName == "/interCACHE")
+  if (simpleStringName == "/interCACHE" || simpleStringName == "/orchA" || simpleStringName == "/orchB")
   {
     if (ingress.face.getScope() == ndn::nfd::FACE_SCOPE_LOCAL)
     {
@@ -497,12 +497,12 @@ Forwarder::onDataUnsolicited(const Data& data, const FaceEndpoint& ingress)
 bool
 Forwarder::onOutgoingData(const Data& data, Face& egress)
 {
-  // get first part of the name, if it equals /interCACHE and it's going to a local face (our application), then print INFO message
+  // get first part of the name, if it equals /interCACHE or /orchA or /orchB and it's going to a local face (our application), then print INFO message
   // this effectively counts the number of data packets that are arriving at their consumer
   ndn::Name simpleName;
   simpleName = (data.getName()).getPrefix(1); // get just the first component of the name, and convert to Uri string
   std::string simpleStringName = simpleName.toUri();
-  if (simpleStringName == "/interCACHE")
+  if (simpleStringName == "/interCACHE" || simpleStringName == "/orchA" || simpleStringName == "/orchB")
   {
     if (egress.getScope() == ndn::nfd::FACE_SCOPE_LOCAL)
     {
