@@ -214,6 +214,10 @@ private:
   void
   setExpiryTimer(const shared_ptr<pit::Entry>& pitEntry, time::milliseconds duration);
 
+  void
+  sendShortcutOPTinterests(const Interest& interest, const FaceEndpoint& ingress,
+                     const shared_ptr<pit::Entry>& pitEntry);
+
   /** \brief Insert Nonce to Dead Nonce List if necessary.
    *  \param upstream if null, insert Nonces from all out-records;
    *                  if not null, insert Nonce only on the out-records of this face

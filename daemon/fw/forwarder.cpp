@@ -210,77 +210,9 @@ Forwarder::onContentStoreMiss(const Interest& interest, const FaceEndpoint& ingr
   NFD_LOG_DEBUG("onContentStoreMiss interest=" << interest.getName() << " nonce=" << interest.getNonce());
   ++m_counters.nCsMisses;
 
-  // generate interest (/nescoSCOPT/shortcutOPT) to all local application faces, containing DAG (application parameters).
-  // forwarder applications will look for this name, and generate interests early if they are hosting any upstream services from the one in this interest
-  shared_ptr<Interest> interestOPT = make_shared<Interest>();
-  interestOPT->setName("/nescoSCOPT/shortcutOPT");
-  if (interest.hasApplicationParameters())
-  {
-    interestOPT->setApplicationParameters(interest.getApplicationParameters());
-  }
   ndn::Name simpleName;
   simpleName = (interest.getName()).getPrefix(1); // get just the first component of the name, and convert to Uri string
   std::string simpleStringName = simpleName.toUri();
-  if (simpleStringName == "/nescoSCOPT")
-  {
-    char method = 2;
-    if(method==1) // itereate through all faces of this router, send interest to all local faces
-    {
-      for (FaceTable::const_iterator it = m_faceTable.begin(); it != m_faceTable.end(); ++it) {
-        Face* localFace = &*it;
-        if (localFace->getScope() != ndn::nfd::FACE_SCOPE_NON_LOCAL) {
-          NFD_LOG_DEBUG("cabeee CABEEEshortcutOPT, generating interest " << interestOPT << ", for local face " << localFace);
-          localFace->sendInterest(*interestOPT);
-        }
-      }
-
-    }
-    if (method==2) // iterate through all fib entries, then through all faces(hops) for each entry, and if entry is for /nescoSCOPT AND it is a local face, then send interest.
-    {
-      //NFD_LOG_DEBUG("CABEEEshortcutOPT, sending /shortcutOPT interest to apps on local faces to generate new interests for inputs into locally hosted services.");
-
-      //look at FIB, and see if any services are hosted on a local face. If so, send interestOPT out through that face.
-      for (fib::Fib::const_iterator fib_iterator = m_fib.begin(); fib_iterator != m_fib.end(); ++fib_iterator)
-      {
-        //NFD_LOG_DEBUG("CABEEEshortcutOPT, looking at fib entry\n");
-        ndn::Name entryName;
-        entryName = fib_iterator->getPrefix();
-        entryName = entryName.getSubName(0,1); // starting at component 0, get 1 component (/nescoSCOPT only)
-        std::string entryString = entryName.toUri();
-        //NFD_LOG_DEBUG("CABEEEshortcutOPT, fib entry name component 0 is "<< entryString);
-        if (entryString == "/nescoSCOPT")
-        {
-          //NFD_LOG_DEBUG("CABEEEshortcutOPT, fib entry has nescoSCOPT name\n");
-          if (fib_iterator->hasNextHops())
-          {
-            // figure out the faceID of all the nexthops in the list, and send interest to ones that are local
-            //fib::NextHopList hopList = fib_iterator->getNextHops();
-            const fib::NextHopList& hopList = fib_iterator->getNextHops();
-            //for (auto &hop_iterator : hopList)
-            for (nfd::fib::NextHopList::const_iterator hop_iterator = hopList.begin(); hop_iterator != hopList.end(); ++hop_iterator)
-            //for (nfd::fib::NextHopList::const_iterator hop_iterator = fib_iterator->getNextHops().begin(); hop_iterator != fib_iterator->getNextHops().end(); ++hop_iterator)
-            {
-              //NFD_LOG_DEBUG("CABEEEshortcutOPT, looking at all hops for this fib entry\n");
-              //Face thisFace = hop_iterator->getFace();
-              //if (thisFace.getScope() != ndn::nfd::FACE_SCOPE_NON_LOCAL)
-              //{
-                //thisFace.sendInterest(interestOPT);
-              //}
-              if (hop_iterator->getFace().getScope() != ndn::nfd::FACE_SCOPE_NON_LOCAL)
-              {
-                //interestOPT->setName(fib_iterator->getPrefix()); // give it the hosted service name, instead of /nescoSCOPT/shortcutOPT
-                ndn::Name scoptFullName;
-                scoptFullName = "/nescoSCOPT/shortcutOPT" + fib_iterator->getPrefix().getSubName(1,1).toUri();
-                interestOPT->setName(scoptFullName); // add the hosted service name to the full name: /nescoSCOPT/shortcutOPT/<serviceName>
-                NFD_LOG_DEBUG("CABEEEshortcutOPT, generating interest " << interestOPT->getName().toUri() << ", for local face with faceID: " << hop_iterator->getFace().getId());
-                hop_iterator->getFace().sendInterest(*interestOPT);
-              }
-            }
-          }
-        }
-      }
-    }
-  }
 
 
   // attach HopLimit if configured and not present in Interest
@@ -310,6 +242,8 @@ Forwarder::onContentStoreMiss(const Interest& interest, const FaceEndpoint& ingr
       // go to outgoing Interest pipeline
       // scope control is unnecessary, because privileged app explicitly wants to forward
       this->onOutgoingInterest(interest, *nextHopFace, pitEntry);
+      if (simpleStringName == "/nescoSCOPT")
+        this->sendShortcutOPTinterests(interest, ingress, pitEntry);
     }
     return;
   }
@@ -317,6 +251,81 @@ Forwarder::onContentStoreMiss(const Interest& interest, const FaceEndpoint& ingr
   // dispatch to strategy: after receive Interest
   m_strategyChoice.findEffectiveStrategy(*pitEntry)
     .afterReceiveInterest(interest, FaceEndpoint(ingress.face), pitEntry);
+  
+  if (simpleStringName == "/nescoSCOPT")
+    this->sendShortcutOPTinterests(interest, ingress, pitEntry);
+
+}
+void
+Forwarder::sendShortcutOPTinterests(const Interest& interest, const FaceEndpoint& ingress,
+                              const shared_ptr<pit::Entry>& pitEntry)
+{
+  // generate interest (/nescoSCOPT/shortcutOPT) to all local application faces, containing DAG (application parameters).
+  // forwarder applications will look for this name, and generate interests early if they are hosting any upstream services from the one in this interest
+  shared_ptr<Interest> interestOPT = make_shared<Interest>();
+  interestOPT->setName("/nescoSCOPT/shortcutOPT");
+  if (interest.hasApplicationParameters())
+  {
+    interestOPT->setApplicationParameters(interest.getApplicationParameters());
+  }
+  
+  char method = 2;
+  if(method==1) // itereate through all faces of this router, send interest to all local faces
+  {
+    for (FaceTable::const_iterator it = m_faceTable.begin(); it != m_faceTable.end(); ++it) {
+      Face* localFace = &*it;
+      if (localFace->getScope() != ndn::nfd::FACE_SCOPE_NON_LOCAL) {
+        NFD_LOG_DEBUG("cabeee CABEEEshortcutOPT, generating interest " << interestOPT << ", for local face " << localFace);
+        localFace->sendInterest(*interestOPT);
+      }
+    }
+
+  }
+  if (method==2) // iterate through all fib entries, then through all faces(hops) for each entry, and if entry is for /nescoSCOPT AND it is a local face, then send interest.
+  {
+    //NFD_LOG_DEBUG("CABEEEshortcutOPT, sending /shortcutOPT interest to apps on local faces to generate new interests for inputs into locally hosted services.");
+
+    //look at FIB, and see if any services are hosted on a local face. If so, send interestOPT out through that face.
+    for (fib::Fib::const_iterator fib_iterator = m_fib.begin(); fib_iterator != m_fib.end(); ++fib_iterator)
+    {
+      //NFD_LOG_DEBUG("CABEEEshortcutOPT, looking at fib entry\n");
+      ndn::Name entryName;
+      entryName = fib_iterator->getPrefix();
+      entryName = entryName.getSubName(0,1); // starting at component 0, get 1 component (/nescoSCOPT only)
+      std::string entryString = entryName.toUri();
+      //NFD_LOG_DEBUG("CABEEEshortcutOPT, fib entry name component 0 is "<< entryString);
+      if (entryString == "/nescoSCOPT")
+      {
+        //NFD_LOG_DEBUG("CABEEEshortcutOPT, fib entry has nescoSCOPT name\n");
+        if (fib_iterator->hasNextHops())
+        {
+          // figure out the faceID of all the nexthops in the list, and send interest to ones that are local
+          //fib::NextHopList hopList = fib_iterator->getNextHops();
+          const fib::NextHopList& hopList = fib_iterator->getNextHops();
+          //for (auto &hop_iterator : hopList)
+          for (nfd::fib::NextHopList::const_iterator hop_iterator = hopList.begin(); hop_iterator != hopList.end(); ++hop_iterator)
+          //for (nfd::fib::NextHopList::const_iterator hop_iterator = fib_iterator->getNextHops().begin(); hop_iterator != fib_iterator->getNextHops().end(); ++hop_iterator)
+          {
+            //NFD_LOG_DEBUG("CABEEEshortcutOPT, looking at all hops for this fib entry\n");
+            //Face thisFace = hop_iterator->getFace();
+            //if (thisFace.getScope() != ndn::nfd::FACE_SCOPE_NON_LOCAL)
+            //{
+              //thisFace.sendInterest(interestOPT);
+            //}
+            if (hop_iterator->getFace().getScope() != ndn::nfd::FACE_SCOPE_NON_LOCAL)
+            {
+              //interestOPT->setName(fib_iterator->getPrefix()); // give it the hosted service name, instead of /nescoSCOPT/shortcutOPT
+              ndn::Name scoptFullName;
+              scoptFullName = "/nescoSCOPT/shortcutOPT" + fib_iterator->getPrefix().getSubName(1,1).toUri();
+              interestOPT->setName(scoptFullName); // add the hosted service name to the full name: /nescoSCOPT/shortcutOPT/<serviceName>
+              NFD_LOG_DEBUG("CABEEEshortcutOPT, generating interest " << interestOPT->getName().toUri() << ", for local face with faceID: " << hop_iterator->getFace().getId());
+              hop_iterator->getFace().sendInterest(*interestOPT);
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 void
