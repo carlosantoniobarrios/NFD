@@ -93,12 +93,12 @@ Forwarder::Forwarder(FaceTable& faceTable)
 void
 Forwarder::onIncomingInterest(const Interest& interest, const FaceEndpoint& ingress)
 {
-  // get first part of the name, if it equals /interCACHE or /orchA, or /orchB and it's coming from a local face (our application), then print INFO message
+  // get first part of the name, if it equals /nesco or /nescoSCOPT or /orchA, or /orchB and it's coming from a local face (our application), then print INFO message
   // this effectively counts the number of interest packets that are generated at the consumer (including the custom forwarders)
   ndn::Name simpleName;
   simpleName = (interest.getName()).getPrefix(1); // get just the first component of the name, and convert to Uri string
   std::string simpleStringName = simpleName.toUri();
-  if (simpleStringName == "/interCACHE" || simpleStringName == "/orchA" || simpleStringName == "/orchB")
+  if (simpleStringName == "/nesco" || simpleStringName == "/nescoSCOPT" || simpleStringName == "/orchA" || simpleStringName == "/orchB")
   {
     if (ingress.face.getScope() == ndn::nfd::FACE_SCOPE_LOCAL)
     {
@@ -210,10 +210,10 @@ Forwarder::onContentStoreMiss(const Interest& interest, const FaceEndpoint& ingr
   NFD_LOG_DEBUG("onContentStoreMiss interest=" << interest.getName() << " nonce=" << interest.getNonce());
   ++m_counters.nCsMisses;
 
-  // generate interest (/interCACHE/shortcutOPT) to all local application faces, containing DAG (application parameters).
+  // generate interest (/nescoSCOPT/shortcutOPT) to all local application faces, containing DAG (application parameters).
   // forwarder applications will look for this name, and generate interests early if they are hosting any upstream services from the one in this interest
   shared_ptr<Interest> interestOPT = make_shared<Interest>();
-  interestOPT->setName("/interCACHE/shortcutOPT");
+  interestOPT->setName("/nescoSCOPT/shortcutOPT");
   if (interest.hasApplicationParameters())
   {
     interestOPT->setApplicationParameters(interest.getApplicationParameters());
@@ -221,7 +221,7 @@ Forwarder::onContentStoreMiss(const Interest& interest, const FaceEndpoint& ingr
   ndn::Name simpleName;
   simpleName = (interest.getName()).getPrefix(1); // get just the first component of the name, and convert to Uri string
   std::string simpleStringName = simpleName.toUri();
-  if (simpleStringName == "/interCACHE")
+  if (simpleStringName == "/nescoSCOPT")
   {
     char method = 2;
     if(method==1) // itereate through all faces of this router, send interest to all local faces
@@ -235,7 +235,7 @@ Forwarder::onContentStoreMiss(const Interest& interest, const FaceEndpoint& ingr
       }
 
     }
-    if (method==2) // iterate through all fib entries, then through all faces(hops) for each entry, and if entry is for /interCACHE AND it is a local face, then send interest.
+    if (method==2) // iterate through all fib entries, then through all faces(hops) for each entry, and if entry is for /nescoSCOPT AND it is a local face, then send interest.
     {
       //NFD_LOG_DEBUG("CABEEEshortcutOPT, sending /shortcutOPT interest to apps on local faces to generate new interests for inputs into locally hosted services.");
 
@@ -245,12 +245,12 @@ Forwarder::onContentStoreMiss(const Interest& interest, const FaceEndpoint& ingr
         //NFD_LOG_DEBUG("CABEEEshortcutOPT, looking at fib entry\n");
         ndn::Name entryName;
         entryName = fib_iterator->getPrefix();
-        entryName = entryName.getSubName(0,1); // starting at component 0, get 1 component (/interCACHE only)
+        entryName = entryName.getSubName(0,1); // starting at component 0, get 1 component (/nescoSCOPT only)
         std::string entryString = entryName.toUri();
         //NFD_LOG_DEBUG("CABEEEshortcutOPT, fib entry name component 0 is "<< entryString);
-        if (entryString == "/interCACHE")
+        if (entryString == "/nescoSCOPT")
         {
-          //NFD_LOG_DEBUG("CABEEEshortcutOPT, fib entry has interCACHE name\n");
+          //NFD_LOG_DEBUG("CABEEEshortcutOPT, fib entry has nescoSCOPT name\n");
           if (fib_iterator->hasNextHops())
           {
             // figure out the faceID of all the nexthops in the list, and send interest to ones that are local
@@ -268,7 +268,7 @@ Forwarder::onContentStoreMiss(const Interest& interest, const FaceEndpoint& ingr
               //}
               if (hop_iterator->getFace().getScope() != ndn::nfd::FACE_SCOPE_NON_LOCAL)
               {
-                //interestOPT->setName(fib_iterator->getPrefix()); // give it the hosted service name, instead of /interCACHE/shortcutOPT
+                //interestOPT->setName(fib_iterator->getPrefix()); // give it the hosted service name, instead of /nescoSCOPT/shortcutOPT
                 NFD_LOG_DEBUG("CABEEEshortcutOPT, generating interest " << interestOPT << ", for local face with faceID: " << hop_iterator->getFace().getId());
                 hop_iterator->getFace().sendInterest(*interestOPT);
               }
@@ -497,12 +497,12 @@ Forwarder::onDataUnsolicited(const Data& data, const FaceEndpoint& ingress)
 bool
 Forwarder::onOutgoingData(const Data& data, Face& egress)
 {
-  // get first part of the name, if it equals /interCACHE or /orchA or /orchB and it's going to a local face (our application), then print INFO message
+  // get first part of the name, if it equals /nesco or /nescoSCOPT or /orchA or /orchB and it's going to a local face (our application), then print INFO message
   // this effectively counts the number of data packets that are arriving at their consumer
   ndn::Name simpleName;
   simpleName = (data.getName()).getPrefix(1); // get just the first component of the name, and convert to Uri string
   std::string simpleStringName = simpleName.toUri();
-  if (simpleStringName == "/interCACHE" || simpleStringName == "/orchA" || simpleStringName == "/orchB")
+  if (simpleStringName == "/nesco" || simpleStringName == "/nescoSCOPT" || simpleStringName == "/orchA" || simpleStringName == "/orchB")
   {
     if (egress.getScope() == ndn::nfd::FACE_SCOPE_LOCAL)
     {
