@@ -269,7 +269,10 @@ Forwarder::onContentStoreMiss(const Interest& interest, const FaceEndpoint& ingr
               if (hop_iterator->getFace().getScope() != ndn::nfd::FACE_SCOPE_NON_LOCAL)
               {
                 //interestOPT->setName(fib_iterator->getPrefix()); // give it the hosted service name, instead of /nescoSCOPT/shortcutOPT
-                NFD_LOG_DEBUG("CABEEEshortcutOPT, generating interest " << interestOPT << ", for local face with faceID: " << hop_iterator->getFace().getId());
+                ndn::Name scoptFullName;
+                scoptFullName = "/nescoSCOPT/shortcutOPT" + fib_iterator->getPrefix().getSubName(1,1).toUri();
+                interestOPT->setName(scoptFullName); // add the hosted service name to the full name: /nescoSCOPT/shortcutOPT/<serviceName>
+                NFD_LOG_DEBUG("CABEEEshortcutOPT, generating interest " << interestOPT->getName().toUri() << ", for local face with faceID: " << hop_iterator->getFace().getId());
                 hop_iterator->getFace().sendInterest(*interestOPT);
               }
             }
